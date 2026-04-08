@@ -49,12 +49,12 @@ function createSlipSVG(
   const isSuccess = String(txnStatus || '').trim().toLowerCase() === 'success';
 
   /* ── Colors ─────────────────────────────────────────────── */
-  const PALE_BG      = isSuccess ? '#e8f5e9' : '#ffebee';
-  const PRIMARY_TEXT = isSuccess ? '#2e7d32' : '#c62828';
+  const PALE_BG      = isSuccess ? '#e0f2fe' : '#ffebee';      // Light blue 100 instead of green
+  const PRIMARY_TEXT = isSuccess ? '#0284c7' : '#c62828';      // Blue 600 instead of green
   const BOLD_TEXT    = '#1a202c';
   const LIGHT_TEXT   = '#94a3b8';
   const DIVIDER      = '#e2e8f0';
-  const ICON_COLOR   = isSuccess ? '#4caf50' : '#f44336';
+  const ICON_COLOR   = isSuccess ? '#0ea5e9' : '#f44336';      // Sky blue 500 instead of green
 
   /* ── Escape helper ───────────────────────────────────────── */
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -77,6 +77,7 @@ function createSlipSVG(
   const ICON_CY = sv(80);
   const ICON_R  = s(32);
   const ICON_IR = s(20);
+  const FOOTER_SEP_Y = height - sv(120);
 
   /* ── Amount in words ─────────────────────────────────────── */
   const amountWords = convertToIndianWords(amount);
@@ -89,16 +90,18 @@ function createSlipSVG(
     { lbl: 'Mode',       val: esc(txnMode)   },
     { lbl: 'Account No', val: esc(account)   },
     { lbl: 'Name',       val: esc(name)      },
-    { lbl: 'Status',     val: isSuccess ? 'Completed' : 'Failed', status: true },
+    { lbl: 'Status',     val: isSuccess ? 'Success' : 'Failed', status: true },
   ];
 
-  const ROW_H      = sv(52);
-  const ROWS_START = HDR_H + sv(20);
+  // Fixed smaller row heights for a tighter table layout, leaving padding at the bottom
+  const ROW_H      = sv(46);
+  const TABLE_MARGIN = sv(16); // Gap below the blue header
+  const ROWS_START = HDR_H + TABLE_MARGIN;
 
   const gridSVG = details.map((d, i) => {
     const rowY     = ROWS_START + i * ROW_H;
     const midY     = rowY + ROW_H / 2;
-    const lblY     = midY + sf(5);
+    const lblY     = Math.round(midY + sf(4.5)); // optically vertical center
     const valColor = d.status ? PRIMARY_TEXT : BOLD_TEXT;
     const valWgt   = d.status ? '700' : '500';
     const sep = i > 0
@@ -129,17 +132,21 @@ function createSlipSVG(
   ).join('');
 
   /* ── Footer layout ───────────────────────────────────────── */
-  const FOOTER_SEP_Y = height - sv(120);
   const FOOTER_LBL_Y = height - sv(92);
 
   // Compact RSD logo — use sf() so sizing is relative to the shorter axis (width)
   const LOGO_FS     = sf(16);           // font-size for R, S, D
   const LOGO_W      = sf(34);           // approximate rendered width of "RSD"
   const PS_FS       = sf(13);           // "PAYMENT SOLUTION" font-size
-  const GAP         = sf(8);            // gap between logo and text
-  const PS_W        = PS_FS * 11.5;     // approx width of "PAYMENT SOLUTION"
+  const GAP         = sf(6);            // gap between logo and text
+  
+  // "PAYMENT SOLUTION" is 16 uppercase bold chars (approx 0.75em width each) + 0.6px letter spacing
+  const PS_W        = sf(165);          // approx width of "PAYMENT SOLUTION"
   const BLOCK_W     = LOGO_W + GAP + PS_W;
-  const BLOCK_X     = Math.round((width - BLOCK_W) / 2);  // left edge of the whole group
+
+  // Nudge the logo block slightly to the right as requested
+  const RIGHT_NUDGE = sf(14);
+  const BLOCK_X     = Math.round((width - BLOCK_W) / 2) + RIGHT_NUDGE;  // left edge of the whole group
   const BASELINE_Y  = height - sv(55);  // shared text baseline for logo & text
 
   const PS_X = BLOCK_X + LOGO_W + GAP;
@@ -207,14 +214,14 @@ function createSlipSVG(
     <tspan x="${width / 2}" y="${sv(238)}">${wordTspans}</tspan>
   </text>
 
-  <!-- Separator: header → body -->
-  <line x1="0" y1="${HDR_H}" x2="${width}" y2="${HDR_H}" stroke="${DIVIDER}" stroke-width="1"/>
+  <!-- Separator: header → body (aligned with table) -->
+  <line x1="${PAD_X}" y1="${ROWS_START}" x2="${width - PAD_X}" y2="${ROWS_START}" stroke="${DIVIDER}" stroke-width="1"/>
 
   <!-- Detail rows -->
   ${gridSVG}
 
-  <!-- Footer separator -->
-  <line x1="0" y1="${FOOTER_SEP_Y}" x2="${width}" y2="${FOOTER_SEP_Y}" stroke="${DIVIDER}" stroke-width="1"/>
+  <!-- Footer separator (aligned with table) -->
+  <line x1="${PAD_X}" y1="${FOOTER_SEP_Y}" x2="${width - PAD_X}" y2="${FOOTER_SEP_Y}" stroke="${DIVIDER}" stroke-width="1"/>
 
   <!-- "CONNECTED BANKING – POWERED BY" label -->
   <text x="${width / 2}" y="${FOOTER_LBL_Y}"

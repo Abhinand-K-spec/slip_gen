@@ -102,23 +102,31 @@ router.post('/generate', upload.single('file'), async (req, res, next) => {
     const { mode, status } = req.body;
 
     // Process in batches to prevent memory spikes
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '20', 10);
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
-      const batchTasks = batch.map(row => pool.runTask({
-        ...row,
-        txnMode: mode || 'IMPS',
-        txnStatus: status || 'Success'
-      }));
+      const batchTasks = batch.map(async (row) => {
+        try {
+          const buffer = await generateSlip({
+            ...row,
+            txnMode: mode || 'IMPS',
+            txnStatus: status || 'Success'
+          });
+          const identifier = row.refNo || row.account || Date.now();
+          const filename = `receipt_${String(identifier).replace(/[^a-zA-Z0-9_-]/g, '_')}_${String(row.name || 'unnamed').replace(/\\s+/g, '_')}.${SLIP_EXT}`;
+          return { buffer, filename };
+        } catch (err) {
+          console.error('[GEN ERROR] Row failed:', err.message);
+          return null; // Return null on failure instead of throwing
+        }
+      });
       
-      const results = await Promise.allSettled(batchTasks);
+      const results = await Promise.all(batchTasks);
       
       for (const result of results) {
-        if (result.status === 'fulfilled') {
-          const { buffer, filename } = result.value;
+        if (result) {
+          const { buffer, filename } = result;
           archive.append(buffer, { name: filename });
-        } else {
-          console.error('[GEN ERROR] Row failed:', result.reason?.message);
         }
       }
     }
