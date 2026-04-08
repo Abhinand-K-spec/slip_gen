@@ -15,7 +15,7 @@ const { createSlipSVG } = require('../templates/defaultTemplate');
 const path = require('path');
 
 const rawWidth = parseInt(process.env.SLIP_WIDTH || '400', 10);
-const rawHeight = parseInt(process.env.SLIP_HEIGHT || '800', 10);
+const rawHeight = parseInt(process.env.SLIP_HEIGHT || '710', 10);
 // Ensure portrait orientation: smaller dimension is width, larger is height
 // Multiplying by 2 for "High DPI" clarity
 const WIDTH = Math.min(rawWidth, rawHeight) * 2;

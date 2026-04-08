@@ -44,7 +44,7 @@ function wrapText(text, maxChars) {
 function createSlipSVG(
   { name, account, ifsc, amount, refNo, timestamp, txnMode, txnStatus } = {},
   width  = 400,
-  height = 800
+  height = 710
 ) {
   const isSuccess = String(txnStatus || '').trim().toLowerCase() === 'success';
 
@@ -62,7 +62,7 @@ function createSlipSVG(
   /* ── Scale helpers ────────────────────────────────────────── */
   // sx/sy for geometric positions, sf for font sizes (uses smaller axis = width)
   const sx = width  / 400;
-  const sy = height / 800;
+  const sy = height / 710;
   const s  = (px) => Math.round(px * sx);
   const sv = (px) => Math.round(px * sy);
   const sf = (px) => Math.round(px * Math.min(sx, sy));
@@ -77,7 +77,7 @@ function createSlipSVG(
   const ICON_CY = sv(80);
   const ICON_R  = s(32);
   const ICON_IR = s(20);
-  const FOOTER_SEP_Y = height - sv(120);
+  const FOOTER_SEP_Y = height - sv(90);
 
   /* ── Amount in words ─────────────────────────────────────── */
   const amountWords = convertToIndianWords(amount);
@@ -132,7 +132,7 @@ function createSlipSVG(
   ).join('');
 
   /* ── Footer layout ───────────────────────────────────────── */
-  const FOOTER_LBL_Y = height - sv(92);
+  const FOOTER_LBL_Y = height - sv(62);
 
   // Compact RSD logo — use sf() so sizing is relative to the shorter axis (width)
   const LOGO_FS     = sf(16);           // font-size for R, S, D
@@ -147,7 +147,7 @@ function createSlipSVG(
   // Nudge the logo block slightly to the right as requested
   const RIGHT_NUDGE = sf(14);
   const BLOCK_X     = Math.round((width - BLOCK_W) / 2) + RIGHT_NUDGE;  // left edge of the whole group
-  const BASELINE_Y  = height - sv(55);  // shared text baseline for logo & text
+  const BASELINE_Y  = height - sv(25);  // shared text baseline for logo & text
 
   const PS_X = BLOCK_X + LOGO_W + GAP;
 
