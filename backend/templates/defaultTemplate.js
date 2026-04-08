@@ -43,8 +43,8 @@ function wrapText(text, maxChars) {
 
 function createSlipSVG(
   { name, account, ifsc, amount, refNo, timestamp, txnMode, txnStatus } = {},
-  width  = 400,
-  height = 710
+  width,
+  height
 ) {
   const isSuccess = String(txnStatus || '').trim().toLowerCase() === 'success';
 
@@ -60,25 +60,21 @@ function createSlipSVG(
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   /* ── Scale helpers ────────────────────────────────────────── */
-  // sx/sy for geometric positions, sf for font sizes (uses smaller axis = width)
+  // Use uniform scale based on width so elements keep aspect ratio
   const sx = width  / 400;
-  const sy = height / 710;
   const s  = (px) => Math.round(px * sx);
-  const sv = (px) => Math.round(px * sy);
-  const sf = (px) => Math.round(px * Math.min(sx, sy));
+  const sf = (px) => Math.round(px * sx);
 
   /* ── Font ─────────────────────────────────────────────────── */
   const FF = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
   /* ── Layout constants ─────────────────────────────────────── */
   const CARD_R  = s(16);
-  const PAD_X   = s(28);
-  const HDR_H   = sv(320);
-  const ICON_CY = sv(80);
+  const PAD_X   = s(24);
+  const HDR_H   = s(205);
+  const ICON_CY = s(50);
   const ICON_R  = s(32);
   const ICON_IR = s(20);
-  const FOOTER_SEP_Y = height - sv(90);
-
   /* ── Amount in words ─────────────────────────────────────── */
   const amountWords = convertToIndianWords(amount);
   const wordLines   = wrapText(amountWords, 32);
@@ -94,9 +90,10 @@ function createSlipSVG(
   ];
 
   // Fixed smaller row heights for a tighter table layout, leaving padding at the bottom
-  const ROW_H      = sv(46);
-  const TABLE_MARGIN = sv(16); // Gap below the blue header
+  const ROW_H      = s(34);
+  const TABLE_MARGIN = s(8); // Gap below the blue header
   const ROWS_START = HDR_H + TABLE_MARGIN;
+  const FOOTER_SEP_Y = ROWS_START + details.length * ROW_H;
 
   const gridSVG = details.map((d, i) => {
     const rowY     = ROWS_START + i * ROW_H;
@@ -128,11 +125,11 @@ function createSlipSVG(
 
   /* ── Amount words tspans ─────────────────────────────────── */
   const wordTspans = wordLines.map((line, i) =>
-    `<tspan x="${width / 2}" dy="${i === 0 ? '0' : sf(20)}">${line}</tspan>`
+    `<tspan x="${width / 2}" dy="${i === 0 ? '0' : sf(18)}">${line}</tspan>`
   ).join('');
 
   /* ── Footer layout ───────────────────────────────────────── */
-  const FOOTER_LBL_Y = height - sv(62);
+  const FOOTER_LBL_Y = height - s(40);
 
   // Compact RSD logo — use sf() so sizing is relative to the shorter axis (width)
   const LOGO_FS     = sf(16);           // font-size for R, S, D
@@ -147,7 +144,7 @@ function createSlipSVG(
   // Nudge the logo block slightly to the right as requested
   const RIGHT_NUDGE = sf(14);
   const BLOCK_X     = Math.round((width - BLOCK_W) / 2) + RIGHT_NUDGE;  // left edge of the whole group
-  const BASELINE_Y  = height - sv(25);  // shared text baseline for logo & text
+  const BASELINE_Y  = height - s(14);  // shared text baseline for logo & text
 
   const PS_X = BLOCK_X + LOGO_W + GAP;
 
@@ -199,19 +196,19 @@ function createSlipSVG(
   ${iconMark}
 
   <!-- Payment Successful / Failed -->
-  <text x="${width / 2}" y="${sv(140)}"
-        font-family="${FF}" font-size="${sf(20)}" font-weight="700"
+  <text x="${width / 2}" y="${s(95)}"
+        font-family="${FF}" font-size="${sf(18)}" font-weight="700"
         fill="${PRIMARY_TEXT}" text-anchor="middle">Payment ${isSuccess ? 'Successful' : 'Failed'}</text>
 
   <!-- Large rupee amount -->
-  <text x="${width / 2}" y="${sv(200)}"
-        font-family="${FF}" font-size="${sf(36)}" font-weight="800"
+  <text x="${width / 2}" y="${s(138)}"
+        font-family="${FF}" font-size="${sf(32)}" font-weight="800"
         fill="${BOLD_TEXT}" text-anchor="middle">&#8377; ${esc(amount)}</text>
 
   <!-- Amount in words -->
-  <text font-family="${FF}" font-size="${sf(13)}" font-weight="500"
+  <text font-family="${FF}" font-size="${sf(12)}" font-weight="500"
         fill="${BOLD_TEXT}" text-anchor="middle">
-    <tspan x="${width / 2}" y="${sv(238)}">${wordTspans}</tspan>
+    <tspan x="${width / 2}" y="${s(165)}">${wordTspans}</tspan>
   </text>
 
   <!-- Separator: header → body (aligned with table) -->
