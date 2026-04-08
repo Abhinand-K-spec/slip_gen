@@ -89,7 +89,7 @@ export default function App() {
             Generate <span>Payment Receipts</span> in Bulk
           </h2>
           <p className="page-subtitle">
-            Upload your headerless Excel file (A: Name, B: Account, C: IFSC, D: Amount) — we'll bake a professional receipt for every row.
+            Upload your headerless Excel file (A: Name, B: Account, C: IFSC, D: Amount, E: Ref No) — we'll bake a professional receipt for every row.
           </p>
 
           {/* Upload card */}

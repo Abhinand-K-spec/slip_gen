@@ -259,14 +259,26 @@ img { display: block; max-width: 100%; }
 .stat-badge.yellow { background: rgba(251,191,36,0.1); color: var(--accent-warn); border: 1px solid rgba(251,191,36,0.2); }
 .stat-badge.purple { background: rgba(167,139,250,0.1); color: var(--accent-3); border: 1px solid rgba(167,139,250,0.2); }
 
-/* ─── Template Preview ────────────────────────────────────── */
 .preview-img-wrap {
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-glow);
+  display: flex;
+  justify-content: center;
+  background: rgba(0,0,0,0.2);
+  padding: 24px;
 }
-.preview-img-wrap img { width: 100%; display: block; }
+.preview-img-wrap img {
+  display: block;
+  /* Preserve the slip's natural 1:2 aspect ratio — never stretch */
+  width: auto;
+  max-width: 320px;    /* max display width in the preview card */
+  max-height: 640px;   /* corresponding 1:2 height */
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
 
 .field-grid {
   display: grid;

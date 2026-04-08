@@ -2,14 +2,9 @@
  * excelParser.js
  * Converts an Excel/CSV buffer to validated JSON rows.
  * No headers — using positional columns:
- * A: Name, B: Account Number, C: IFSC, D: Amount
+ * A: Name, B: Account Number, C: IFSC, D: Amount, E: Reference Number
  */
 const XLSX = require('xlsx');
-
-function generateRef() {
-  // Generate a random 12-digit number as a string
-  return Math.floor(100000000000 + Math.random() * 900000000000).toString();
-}
 
 /**
  * Parse an xlsx/csv buffer into validated rows.
@@ -42,9 +37,10 @@ function parseExcelBuffer(buffer) {
     const account = String(row[1] || '').trim();
     const ifsc    = String(row[2] || '').trim();
     const amount  = String(row[3] || '').trim();
+    const refNo   = String(row[4] || '').trim();
 
     if (!name || !account) {
-      if (name || account || ifsc || amount) {
+      if (name || account || ifsc || amount || refNo) {
         errors.push({
           row: index + 1,
           reason: 'Missing Name or Account Number',
@@ -59,7 +55,7 @@ function parseExcelBuffer(buffer) {
       account,
       ifsc,
       amount,
-      refNo: generateRef(),
+      refNo: (refNo || '—').toUpperCase(),
       timestamp
     });
   });

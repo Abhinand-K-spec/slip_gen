@@ -12,8 +12,12 @@
 const sharp = require('sharp');
 const { createSlipSVG } = require('../templates/defaultTemplate');
 
-const WIDTH = parseInt(process.env.SLIP_WIDTH || '400', 10);
-const HEIGHT = parseInt(process.env.SLIP_HEIGHT || '800', 10);
+const rawWidth = parseInt(process.env.SLIP_WIDTH || '400', 10);
+const rawHeight = parseInt(process.env.SLIP_HEIGHT || '800', 10);
+// Ensure portrait orientation: smaller dimension is width, larger is height
+// Multiplying by 2 for "High DPI" clarity
+const WIDTH = Math.min(rawWidth, rawHeight) * 2;
+const HEIGHT = Math.max(rawWidth, rawHeight) * 2;
 const FORMAT = (process.env.SLIP_OUTPUT_FORMAT || 'jpg').toLowerCase();
 
 async function generateSlip(rowData) {
@@ -27,8 +31,8 @@ async function generateSlip(rowData) {
     throw new Error('createSlipSVG failed to return a valid Buffer');
   }
 
-  // Since the SVG already includes the background rect, we can render it directly
-  let pipeline = sharp(svgBuffer);
+  // Load with higher density for extra sharpness
+  let pipeline = sharp(svgBuffer, { density: 144 });
 
   if (FORMAT === 'png') {
     return pipeline.png({ compressionLevel: 7 }).toBuffer();
