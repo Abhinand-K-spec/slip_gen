@@ -49,7 +49,7 @@ export default function App() {
 
     try {
       // First tick — simulate parsing phase (no streaming length header during upload)
-      setTimeout(() => setProgressStatus('Generating slips with worker pool…'), 800);
+      setTimeout(() => setProgressStatus('Generating slips…'), 800);
 
       await generateSlips(file, txnMode, txnStatus, (pct) => {
         setProgress(pct);
