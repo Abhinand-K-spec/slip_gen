@@ -16,9 +16,18 @@ const path = require('path');
 
 const rawWidth = parseInt(process.env.SLIP_WIDTH, 10);
 const rawHeight = parseInt(process.env.SLIP_HEIGHT, 10);
+
+if (isNaN(rawWidth) || isNaN(rawHeight) || rawWidth <= 0 || rawHeight <= 0) {
+  throw new Error('SLIP_WIDTH and SLIP_HEIGHT must be valid positive numbers in the environment variables.');
+}
+
+// Enforce a minimum height ratio (approx 1.17x width) so that the footer doesn't overlap the table
+const minHeight = Math.ceil(rawWidth * 1.17);
+const finalHeight = Math.max(rawHeight, minHeight);
+
 // Multiplying by 2 for "High DPI" clarity
 const WIDTH = rawWidth * 2;
-const HEIGHT = rawHeight * 2;
+const HEIGHT = finalHeight * 2;
 const FORMAT = (process.env.SLIP_OUTPUT_FORMAT || 'jpg').toLowerCase();
 
 async function generateSlip(rowData) {
