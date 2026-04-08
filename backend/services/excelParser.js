@@ -6,6 +6,36 @@
  */
 const XLSX = require('xlsx');
 
+function getRandomTimeRange(count) {
+  const now = new Date();
+  
+  // Start time: 9:00 AM Today
+  const startTime = new Date(now.getTime());
+  startTime.setHours(9, 0, 0, 0);
+
+  // End time: Right now
+  const endTime = now.getTime();
+  const startMs = startTime.getTime();
+  const rangeMs = endTime - startMs;
+
+  // If the upload happens before 9 AM (unlikely but possible), 
+  // allow a small fallback window from 9 AM to 9:05 AM.
+  const activeRange = rangeMs > 0 ? rangeMs : 300000; 
+
+  // Generate unique randomized timestamps within the range
+  const offsets = [];
+  for (let i = 0; i < count; i++) {
+    offsets.push(Math.floor(Math.random() * activeRange));
+  }
+  // Sort them to keep a somewhat chronological but random order
+  offsets.sort((a, b) => a - b);
+
+  return offsets.map(offset => {
+    const d = new Date(startMs + offset);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  });
+}
+
 /**
  * Parse an xlsx/csv buffer into validated rows.
  * @param {Buffer} buffer - File buffer from multer
@@ -27,12 +57,22 @@ function parseExcelBuffer(buffer) {
     throw Object.assign(new Error('The spreadsheet has no data rows.'), { status: 400 });
   }
 
+  // Pre-calculate randomized timestamps for valid rows
+  // First, filter to see how many valid rows we have
+  const validIndices = [];
+  rawRows.forEach((row, i) => {
+    const name = String(row[0] || '').trim();
+    const account = String(row[1] || '').trim();
+    if (name && account) validIndices.push(i);
+  });
+
+  const timestamps = getRandomTimeRange(validIndices.length);
+
   const rows = [];
   const errors = [];
-  const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  let validCount = 0;
 
   rawRows.forEach((row, index) => {
-    // Basic validation: must have at least Name and Account Number
     const name    = String(row[0] || '').trim();
     const account = String(row[1] || '').trim();
     const ifsc    = String(row[2] || '').trim();
@@ -56,7 +96,7 @@ function parseExcelBuffer(buffer) {
       ifsc,
       amount,
       refNo: (refNo || '—').toUpperCase(),
-      timestamp
+      timestamp: timestamps[validCount++]
     });
   });
 

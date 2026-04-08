@@ -12,6 +12,8 @@
 const sharp = require('sharp');
 const { createSlipSVG } = require('../templates/defaultTemplate');
 
+const path = require('path');
+
 const rawWidth = parseInt(process.env.SLIP_WIDTH || '400', 10);
 const rawHeight = parseInt(process.env.SLIP_HEIGHT || '800', 10);
 // Ensure portrait orientation: smaller dimension is width, larger is height
@@ -25,14 +27,14 @@ async function generateSlip(rowData) {
     throw new Error('generateSlip called with null or undefined rowData');
   }
 
-  const svgBuffer = createSlipSVG(rowData, WIDTH, HEIGHT);
+  const { svg } = createSlipSVG(rowData, WIDTH, HEIGHT);
 
-  if (!svgBuffer || !Buffer.isBuffer(svgBuffer)) {
-    throw new Error('createSlipSVG failed to return a valid Buffer');
+  if (!svg || !Buffer.isBuffer(svg)) {
+    throw new Error('createSlipSVG failed to return a valid Buffer in the svg field');
   }
 
-  // Load with higher density for extra sharpness
-  let pipeline = sharp(svgBuffer, { density: 144 });
+  // Load SVG into Sharp (SVG natively handles the logo)
+  const pipeline = sharp(svg);
 
   if (FORMAT === 'png') {
     return pipeline.png({ compressionLevel: 7 }).toBuffer();

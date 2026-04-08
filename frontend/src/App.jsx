@@ -6,16 +6,16 @@ import ProgressTracker from './components/ProgressTracker';
 import { previewSlip, generateSlips } from './services/api';
 
 export default function App() {
-  const [file, setFile]             = useState(null);
+  const [file, setFile] = useState(null);
   const [previewing, setPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [generating, setGenerating] = useState(false);
-  const [progress, setProgress]     = useState(null);
+  const [progress, setProgress] = useState(null);
   const [progressStatus, setProgressStatus] = useState('');
-  const [error, setError]           = useState(null);
-  const [done, setDone]             = useState(false);
-  const [txnMode, setTxnMode]       = useState('IMPS');
-  const [txnStatus, setTxnStatus]   = useState('Success');
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(false);
+  const [txnMode, setTxnMode] = useState('IMPS');
+  const [txnStatus, setTxnStatus] = useState('Success');
 
   const handleFileSelect = (f) => {
     setFile(f);
@@ -118,8 +118,8 @@ export default function App() {
             <div className="btn-row" style={{ marginTop: '20px', gap: '15px', justifyContent: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>TRANSACTION MODE</label>
-                <select 
-                  value={txnMode} 
+                <select
+                  value={txnMode}
                   onChange={(e) => setTxnMode(e.target.value)}
                   className="btn btn-outline"
                   style={{ width: '100%', textAlign: 'left', padding: '10px' }}
@@ -131,8 +131,8 @@ export default function App() {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>PAYMENT STATUS</label>
-                <select 
-                  value={txnStatus} 
+                <select
+                  value={txnStatus}
                   onChange={(e) => setTxnStatus(e.target.value)}
                   className="btn btn-outline"
                   style={{ width: '100%', textAlign: 'left', padding: '10px' }}
@@ -175,7 +175,7 @@ export default function App() {
       {/* Footer */}
       <footer className="footer">
         <div className="container">
-          SlipGen — images generated in-memory, no data stored on server.
+          SlipGen — images generated in-memory.
         </div>
       </footer>
     </div>

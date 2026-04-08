@@ -1,170 +1,237 @@
 /**
- * defaultTemplate.js — Vertical slip, 1:2 aspect (400 × 800 default)
+ * defaultTemplate.js — Redesigned to match reference image layout
+ * Portrait slip: 400 × 800 base (scaled 2× internally for HiDPI)
  *
- * Fields (top → bottom):
- *  1. Date & Time        5. Amount
- *  2. Beneficiary Name   6. Reference Number
- *  3. Account Number     7. Transaction Mode
- *  4. IFSC Code          8. Transaction Status
+ * Returns { svg: Buffer }
  */
 
+function convertToIndianWords(num) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  let n = parseInt(String(num ?? '0').replace(/,/g, ''), 10);
+  if (isNaN(n) || n === 0) return 'Zero Rupees Only';
+
+  function convert(n) {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convert(n % 100) : '');
+    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 !== 0 ? ' ' + convert(n % 1000) : '');
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 !== 0 ? ' ' + convert(n % 100000) : '');
+    return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 !== 0 ? ' ' + convert(n % 10000000) : '');
+  }
+
+  return convert(n).trim() + ' Rupees Only';
+}
+
+function wrapText(text, maxChars) {
+  const words = text.split(' ');
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxChars) {
+      if (current) lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 function createSlipSVG(
-  { name, account, ifsc, amount, refNo, timestamp, txnMode, txnStatus },
+  { name, account, ifsc, amount, refNo, timestamp, txnMode, txnStatus } = {},
   width  = 400,
   height = 800
 ) {
-  /* ── Theme ──────────────────────────────────────────────── */
   const isSuccess = String(txnStatus || '').trim().toLowerCase() === 'success';
 
-  const HEADER_COLOR = isSuccess ? '#1b5e20' : '#b71c1c';
-  const ACCENT_COLOR = isSuccess ? '#43a047' : '#e53935';
-  const STATUS_BG    = isSuccess ? '#e8f5e9' : '#ffebee';
-  const STATUS_FG    = isSuccess ? '#2e7d32' : '#c62828';
+  /* ── Colors ─────────────────────────────────────────────── */
+  const PALE_BG      = isSuccess ? '#e8f5e9' : '#ffebee';
+  const PRIMARY_TEXT = isSuccess ? '#2e7d32' : '#c62828';
+  const BOLD_TEXT    = '#1a202c';
+  const LIGHT_TEXT   = '#94a3b8';
+  const DIVIDER      = '#e2e8f0';
+  const ICON_COLOR   = isSuccess ? '#4caf50' : '#f44336';
 
-  /* ── XML-safe helper ────────────────────────────────────── */
-  const x = (v) =>
-    String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  /* ── Escape helper ───────────────────────────────────────── */
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const MODE   = x(String(txnMode  || 'IMPS').toUpperCase());
-  const STATUS = isSuccess ? 'Success' : 'Failed';
+  /* ── Scale helpers ────────────────────────────────────────── */
+  // sx/sy for geometric positions, sf for font sizes (uses smaller axis = width)
+  const sx = width  / 400;
+  const sy = height / 800;
+  const s  = (px) => Math.round(px * sx);
+  const sv = (px) => Math.round(px * sy);
+  const sf = (px) => Math.round(px * Math.min(sx, sy));
 
-  /* ── Scale factors (base design is 400 × 800) ───────────── */
-  const sx = width  / 400;   // horizontal scale
-  const sy = height / 800;   // vertical scale
+  /* ── Font ─────────────────────────────────────────────────── */
+  const FF = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-  function s(px)  { return Math.round(px * sx); }   // scale x
-  function sv(px) { return Math.round(px * sy); }   // scale y
-  function sf(px) { return Math.round(px * Math.min(sx, sy)); } // scale font
+  /* ── Layout constants ─────────────────────────────────────── */
+  const CARD_R  = s(16);
+  const PAD_X   = s(28);
+  const HDR_H   = sv(320);
+  const ICON_CY = sv(80);
+  const ICON_R  = s(32);
+  const ICON_IR = s(20);
 
-  /* ── Layout (base coords — 400 × 800) ──────────────────── */
-  // Header
-  const HDR_H   = sv(190);   // header band height
-  const CORNER  = s(14);     // card corner radius
-  const ICON_CY = sv(82);    // icon circle centre-y
-  const ICON_R1 = s(30);     // outer (glow) radius
-  const ICON_R2 = s(22);     // inner (white) radius
-  const ICON_FZ = sf(24);    // tick/cross font size
-  const TITLE_Y = sv(155);   // "Payment Successful" baseline-y
-  const TITLE_FZ= sf(19);
-  const ACC_Y   = HDR_H;     // accent bar top
-  const ACC_H   = sv(4);     // accent bar height
+  /* ── Amount in words ─────────────────────────────────────── */
+  const amountWords = convertToIndianWords(amount);
+  const wordLines   = wrapText(amountWords, 32);
 
-  // Body rows — 8 rows start after header + small gap
-  const BODY_TOP = HDR_H + ACC_H + sv(8);
-  const FTR_H    = sv(42);              // footer height
-  const BODY_BOT = height - FTR_H;
-  const BODY_H   = BODY_BOT - BODY_TOP;
-  const ROW_H    = Math.floor(BODY_H / 8);  // ≈ 70px at 800h
-
-  // Inside each row
-  const PAD_X    = s(24);
-  const LBL_FZ   = sf(10);
-  const VAL_FZ   = sf(15);
-  const LBL_OFF  = Math.round(ROW_H * 0.32);  // label baseline from row top
-  const VAL_OFF  = Math.round(ROW_H * 0.72);  // value baseline from row top
-  const DIV_OFF  = ROW_H - 1;                  // divider y from row top
-
-  // Status pill
-  const PILL_H   = Math.round(VAL_FZ * 1.9);
-  const PILL_Y_O = Math.round(VAL_FZ * 1.45);  // pill top = value_baseline - this
-
-  // Footer text
-  const FTR_FZ   = sf(10);
-  const FTR_TY   = height - Math.round(FTR_H * 0.28);
-
-  /* ── Row data ───────────────────────────────────────────── */
-  const rows = [
-    { lbl: 'DATE &amp; TIME',    val: x(timestamp),          mono: false },
-    { lbl: 'BENEFICIARY NAME',   val: x(name),               mono: false },
-    { lbl: 'ACCOUNT NUMBER',     val: x(account),            mono: true  },
-    { lbl: 'IFSC CODE',          val: x(ifsc),               mono: true  },
-    { lbl: 'AMOUNT',             val: `\u20B9 ${x(amount)}`, mono: false },
-    { lbl: 'REFERENCE NUMBER',   val: x(refNo),              mono: true  },
-    { lbl: 'TRANSACTION MODE',   val: MODE,                  mono: false },
-    { lbl: 'TRANSACTION STATUS', val: STATUS,                mono: false, status: true },
+  /* ── Detail rows ─────────────────────────────────────────── */
+  const details = [
+    { lbl: 'Date',       val: esc(timestamp) },
+    { lbl: 'Remarks',    val: esc(refNo)     },
+    { lbl: 'Mode',       val: esc(txnMode)   },
+    { lbl: 'Account No', val: esc(account)   },
+    { lbl: 'Name',       val: esc(name)      },
+    { lbl: 'Status',     val: isSuccess ? 'Completed' : 'Failed', status: true },
   ];
 
-  /* ── Render rows ────────────────────────────────────────── */
-  const NAME_FF  = "'Helvetica Neue', Helvetica, Arial, sans-serif";
-  const MONO_FF  = "Menlo, Monaco, Consolas, 'Courier New', monospace";
-  const SANS_FF  = "Arial, Helvetica, sans-serif";
+  const ROW_H      = sv(52);
+  const ROWS_START = HDR_H + sv(20);
 
-  const rowsSVG = rows.map((r, i) => {
-    const ry     = BODY_TOP + i * ROW_H;
-    const isLast = i === rows.length - 1;
-
-    // Use name font only for the Name row; all others get the character-distinct font
-    const isNameField = r.lbl === 'BENEFICIARY NAME';
-    const ff       = isNameField ? NAME_FF : MONO_FF;
-    const valColor = r.status ? STATUS_FG : '#1a202c';
-    const valWgt   = r.status ? '700' : '600';
-
-    const pill = r.status
-      ? `<rect x="${PAD_X}" y="${ry + VAL_OFF - PILL_Y_O}"
-               width="${width - PAD_X * 2}" height="${PILL_H}"
-               rx="${Math.round(PILL_H * 0.3)}" fill="${STATUS_BG}"/>`
+  const gridSVG = details.map((d, i) => {
+    const rowY     = ROWS_START + i * ROW_H;
+    const midY     = rowY + ROW_H / 2;
+    const lblY     = midY + sf(5);
+    const valColor = d.status ? PRIMARY_TEXT : BOLD_TEXT;
+    const valWgt   = d.status ? '700' : '500';
+    const sep = i > 0
+      ? `<line x1="${PAD_X}" y1="${rowY}" x2="${width - PAD_X}" y2="${rowY}" stroke="${DIVIDER}" stroke-width="1"/>`
       : '';
-
-    const div = isLast ? '' :
-      `<line x1="${PAD_X}" y1="${ry + DIV_OFF}"
-             x2="${width - PAD_X}" y2="${ry + DIV_OFF}"
-             stroke="#e2e8f0" stroke-width="1"/>`;
-
     return `
-  ${pill}
-  <text x="${PAD_X}" y="${ry + LBL_OFF}"
-        font-family="${SANS_FF}" font-size="${LBL_FZ}"
-        font-weight="700" fill="#94a3b8" letter-spacing="0.5">${r.lbl}</text>
-  <text x="${PAD_X}" y="${ry + VAL_OFF}"
-        font-family="${ff}" font-size="${VAL_FZ}"
-        font-weight="${valWgt}" fill="${valColor}">${r.val}</text>
-  ${div}`;
+    ${sep}
+    <text x="${PAD_X}" y="${lblY}"
+          font-family="${FF}" font-size="${sf(13)}"
+          font-weight="400" fill="${LIGHT_TEXT}">${d.lbl}</text>
+    <text x="${width - PAD_X}" y="${lblY}"
+          font-family="${FF}" font-size="${sf(13)}"
+          font-weight="${valWgt}" fill="${valColor}" text-anchor="end">${d.val}</text>
+    `;
   }).join('\n');
 
-  /* ── SVG output ─────────────────────────────────────────── */
-  return Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
+  /* ── Status icon mark ────────────────────────────────────── */
+  const iconMark = isSuccess
+    ? `<path d="M ${width / 2 - s(8)} ${ICON_CY} L ${width / 2 - s(2)} ${ICON_CY + s(7)} L ${width / 2 + s(10)} ${ICON_CY - s(8)}"
+             fill="none" stroke="#fff" stroke-width="${s(4)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<path d="M ${width / 2 - s(7)} ${ICON_CY - s(7)} L ${width / 2 + s(7)} ${ICON_CY + s(7)}
+              M ${width / 2 + s(7)} ${ICON_CY - s(7)} L ${width / 2 - s(7)} ${ICON_CY + s(7)}"
+             fill="none" stroke="#fff" stroke-width="${s(4)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  /* ── Amount words tspans ─────────────────────────────────── */
+  const wordTspans = wordLines.map((line, i) =>
+    `<tspan x="${width / 2}" dy="${i === 0 ? '0' : sf(20)}">${line}</tspan>`
+  ).join('');
+
+  /* ── Footer layout ───────────────────────────────────────── */
+  const FOOTER_SEP_Y = height - sv(120);
+  const FOOTER_LBL_Y = height - sv(92);
+
+  // Compact RSD logo — use sf() so sizing is relative to the shorter axis (width)
+  const LOGO_FS     = sf(16);           // font-size for R, S, D
+  const LOGO_W      = sf(34);           // approximate rendered width of "RSD"
+  const PS_FS       = sf(13);           // "PAYMENT SOLUTION" font-size
+  const GAP         = sf(8);            // gap between logo and text
+  const PS_W        = PS_FS * 11.5;     // approx width of "PAYMENT SOLUTION"
+  const BLOCK_W     = LOGO_W + GAP + PS_W;
+  const BLOCK_X     = Math.round((width - BLOCK_W) / 2);  // left edge of the whole group
+  const BASELINE_Y  = height - sv(55);  // shared text baseline for logo & text
+
+  const PS_X = BLOCK_X + LOGO_W + GAP;
+
+  // Swoosh coordinates (relative to BLOCK_X, BASELINE_Y origin → use sf)
+  const SW_X1 = sf(8),  SW_Y1 = sf(-2);
+  const SW_CX = sf(16), SW_CY = sf(4);
+  const SW_X2 = sf(32), SW_Y2 = sf(-14);
+  const ARR_X = sf(36), ARR_Y = sf(-16);
+  const ARR_L = sf(30), ARR_LY = sf(-16);
+
+  const logoSVG = `
+  <g transform="translate(${BLOCK_X}, ${BASELINE_Y})">
+    <!-- R -->
+    <text x="0" y="0"
+          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
+          fill="#1a3a6b">R</text>
+    <!-- S (accent blue) -->
+    <text x="${sf(12)}" y="0"
+          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
+          fill="#4a7fb5">S</text>
+    <!-- D -->
+    <text x="${sf(23)}" y="0"
+          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
+          fill="#1a3a6b">D</text>
+    <!-- Clean diagonal swoosh arrow (thin line + arrowhead) -->
+    <line x1="${sf(9)}" y1="${sf(-1)}" x2="${sf(30)}" y2="${sf(-14)}"
+          stroke="#4a7fb5" stroke-width="${sf(2)}" stroke-linecap="round"/>
+    <polygon points="${sf(30)},${sf(-17)} ${sf(34)},${sf(-12)} ${sf(28)},${sf(-11)}"
+             fill="#4a7fb5"/>
+  </g>`;
+
+  const svg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
      xmlns="http://www.w3.org/2000/svg">
 
-  <!-- White card -->
-  <rect width="${width}" height="${height}" rx="${CORNER}" ry="${CORNER}" fill="#fff"/>
+  <!-- White card background -->
+  <rect width="${width}" height="${height}" rx="${CARD_R}" ry="${CARD_R}" fill="#ffffff"/>
 
-  <!-- Header band (rounded top, square bottom) -->
-  <rect width="${width}" height="${HDR_H}" rx="${CORNER}" ry="${CORNER}" fill="${HEADER_COLOR}"/>
-  <rect y="${HDR_H - CORNER}" width="${width}" height="${CORNER}" fill="${HEADER_COLOR}"/>
+  <!-- Pale header with white border gap -->
+  <rect x="${s(12)}" y="${s(12)}" width="${width - s(24)}" height="${HDR_H - s(12)}"
+        rx="${CARD_R}" ry="${CARD_R}" fill="${PALE_BG}"/>
+  <rect x="${s(12)}" y="${HDR_H - CARD_R}" width="${width - s(24)}" height="${CARD_R}" fill="${PALE_BG}"/>
 
-  <!-- Icon: glow ring + white disc -->
-  <circle cx="${s(200)}" cy="${ICON_CY}" r="${ICON_R1}" fill="rgba(255,255,255,0.18)"/>
-  <circle cx="${s(200)}" cy="${ICON_CY}" r="${ICON_R2}" fill="rgba(255,255,255,0.93)"/>
-  ${isSuccess ? `
-  <path d="M ${s(200) - s(9)} ${ICON_CY} L ${s(200) - s(2)} ${ICON_CY + s(7)} L ${s(200) + s(11)} ${ICON_CY - s(9)}"
-        fill="none" stroke="${HEADER_COLOR}" stroke-width="${s(5)}" stroke-linecap="round" stroke-linejoin="round"/>
-  ` : `
-  <path d="M ${s(200) - s(9)} ${ICON_CY - s(9)} L ${s(200) + s(9)} ${ICON_CY + s(9)} M ${s(200) + s(9)} ${ICON_CY - s(9)} L ${s(200) - s(9)} ${ICON_CY + s(9)}"
-        fill="none" stroke="${HEADER_COLOR}" stroke-width="${s(5)}" stroke-linecap="round" stroke-linejoin="round"/>
-  `}
+  <!-- Status icon outer circle -->
+  <circle cx="${width / 2}" cy="${ICON_CY}" r="${ICON_R}"
+          fill="#ffffff" filter="drop-shadow(0 3px 6px rgba(0,0,0,0.08))"/>
+  <!-- Coloured inner circle -->
+  <circle cx="${width / 2}" cy="${ICON_CY}" r="${ICON_IR}" fill="${ICON_COLOR}"/>
+  ${iconMark}
 
-  <!-- Header title -->
-  <text x="${s(200)}" y="${TITLE_Y}"
-        font-family="${SANS_FF}" font-size="${TITLE_FZ}" font-weight="700"
-        fill="#fff" text-anchor="middle">Payment ${isSuccess ? 'Successful' : 'Failed'}</text>
+  <!-- Payment Successful / Failed -->
+  <text x="${width / 2}" y="${sv(140)}"
+        font-family="${FF}" font-size="${sf(20)}" font-weight="700"
+        fill="${PRIMARY_TEXT}" text-anchor="middle">Payment ${isSuccess ? 'Successful' : 'Failed'}</text>
 
-  <!-- Accent stripe -->
-  <rect y="${ACC_Y}" width="${width}" height="${ACC_H}" fill="${ACCENT_COLOR}"/>
+  <!-- Large rupee amount -->
+  <text x="${width / 2}" y="${sv(200)}"
+        font-family="${FF}" font-size="${sf(36)}" font-weight="800"
+        fill="${BOLD_TEXT}" text-anchor="middle">&#8377; ${esc(amount)}</text>
+
+  <!-- Amount in words -->
+  <text font-family="${FF}" font-size="${sf(13)}" font-weight="500"
+        fill="${BOLD_TEXT}" text-anchor="middle">
+    <tspan x="${width / 2}" y="${sv(238)}">${wordTspans}</tspan>
+  </text>
+
+  <!-- Separator: header → body -->
+  <line x1="0" y1="${HDR_H}" x2="${width}" y2="${HDR_H}" stroke="${DIVIDER}" stroke-width="1"/>
 
   <!-- Detail rows -->
-  ${rowsSVG}
+  ${gridSVG}
 
-  <!-- Footer band (rounded bottom, square top) -->
-  <rect y="${BODY_BOT}" width="${width}" height="${FTR_H}" fill="${HEADER_COLOR}"/>
-  <rect y="${height - CORNER}" width="${width}" height="${CORNER}"
-        rx="${CORNER}" ry="${CORNER}" fill="${HEADER_COLOR}"/>
+  <!-- Footer separator -->
+  <line x1="0" y1="${FOOTER_SEP_Y}" x2="${width}" y2="${FOOTER_SEP_Y}" stroke="${DIVIDER}" stroke-width="1"/>
 
-  <text x="${s(200)}" y="${FTR_TY}"
-        font-family="${SANS_FF}" font-size="${FTR_FZ}" font-weight="400"
-        fill="rgba(255,255,255,0.65)" text-anchor="middle">This is a system-generated receipt</text>
+  <!-- "CONNECTED BANKING – POWERED BY" label -->
+  <text x="${width / 2}" y="${FOOTER_LBL_Y}"
+        font-family="${FF}" font-size="${sf(9)}" font-weight="500"
+        fill="${LIGHT_TEXT}" text-anchor="middle" letter-spacing="0.8">CONNECTED BANKING - POWERED BY</text>
+
+  <!-- Inline compact RSD logo -->
+  ${logoSVG}
+
+  <!-- PAYMENT SOLUTION text aligned to logo baseline -->
+  <text x="${PS_X}" y="${BASELINE_Y}"
+        font-family="${FF}" font-size="${PS_FS}" font-weight="700"
+        fill="#1a3a6b" text-anchor="start" letter-spacing="0.6">PAYMENT SOLUTION</text>
 
 </svg>`);
+
+  return { svg };
 }
 
 module.exports = { createSlipSVG };
