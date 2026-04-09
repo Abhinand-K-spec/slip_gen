@@ -4,6 +4,7 @@ import FileUpload from './components/FileUpload';
 import TemplatePreview from './components/TemplatePreview';
 import ProgressTracker from './components/ProgressTracker';
 import { previewSlip, generateSlips } from './services/api';
+import logo from './assets/logo.jpeg';
 
 export default function App() {
   const [file, setFile] = useState(null);
@@ -73,9 +74,9 @@ export default function App() {
       <header className="header">
         <div className="container">
           <div className="header-inner">
-            <div className="header-logo">🪪</div>
+            <div className="header-logo"><img src={logo} alt="Logo" /></div>
             <div>
-              <h1>ReceiptGen</h1>
+              <h1>Slip Generation</h1>
               <p>Bulk payment receipt generator</p>
             </div>
           </div>
@@ -151,7 +152,7 @@ export default function App() {
                 onClick={handlePreview}
                 disabled={!file || previewing || generating}
               >
-                {previewing ? <><span className="spinner" /> Parsing…</> : '👁 Preview Template'}
+                {previewing ? <><span className="spinner" /> Parsing…</> : 'Preview Template'}
               </button>
 
               <button
@@ -162,7 +163,7 @@ export default function App() {
               >
                 {generating
                   ? <><span className="spinner" /> Generating…</>
-                  : '⚡ Generate All Slips'}
+                  : 'Generate All Slips'}
               </button>
             </div>
           </div>
