@@ -1,8 +1,7 @@
 /**
- * defaultTemplate.js — Redesigned to match reference image layout
- * Portrait slip: 400 × 800 base (scaled 2× internally for HiDPI)
- *
- * Returns { svg: Buffer }
+ * defaultTemplate.js
+ * Redesigned to match GPay Green & White theme layout
+ * (No bank pill at the top, tick instead of avatar, RSD logo footer)
  */
 
 function convertToIndianWords(num) {
@@ -49,190 +48,166 @@ function createSlipSVG(
   const isSuccess = String(txnStatus || '').trim().toLowerCase() === 'success';
 
   /* ── Colors ─────────────────────────────────────────────── */
-  const PALE_BG      = isSuccess ? '#e0f2fe' : '#ffebee';      // Light blue 100 instead of green
-  const PRIMARY_TEXT = isSuccess ? '#0284c7' : '#c62828';      // Blue 600 instead of green
-  const BOLD_TEXT    = '#1a202c';
-  const LIGHT_TEXT   = '#94a3b8';
-  const DIVIDER      = '#e2e8f0';
-  const ICON_COLOR   = isSuccess ? '#0ea5e9' : '#f44336';      // Sky blue 500 instead of green
+  const BG_COLOR     = '#ffffff'; 
+  const CARD_BG      = '#ffffff'; 
+  const CARD_BORDER  = '#e5e7eb'; // gray-200
+  const BOLD_TEXT    = '#111827'; // gray-900
+  const NORMAL_TEXT  = '#374151'; // gray-700
+  const LIGHT_TEXT   = '#6b7280'; // gray-500
+  
+  const SUCCESS_COLOR= '#22c55e'; // green-500
+  const FAIL_COLOR   = '#ef4444'; // red-500
+  const PRIMARY      = isSuccess ? SUCCESS_COLOR : FAIL_COLOR;
 
-  /* ── Escape helper ───────────────────────────────────────── */
-  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  /* ── Scale helpers ────────────────────────────────────────── */
-  // Use uniform scale based on width so elements keep aspect ratio
-  const sx = width  / 400;
+  /* ── Scale ─────────────────────────────────────────────── */
+  const sx = width / 400;
   const s  = (px) => Math.round(px * sx);
   const sf = (px) => Math.round(px * sx);
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  /* ── Font ─────────────────────────────────────────────────── */
   const FF = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-  /* ── Layout constants ─────────────────────────────────────── */
-  const CARD_R  = s(16);
-  const PAD_X   = s(24);
-  const HDR_H   = s(205);
-  const ICON_CY = s(50);
-  const ICON_R  = s(32);
-  const ICON_IR = s(20);
-  /* ── Amount in words ─────────────────────────────────────── */
-  const amountWords = convertToIndianWords(amount);
-  const wordLines   = wrapText(amountWords, 32);
+  /* ── Elements Setup ──────────────────────────────────────── */
+  const centerX = width / 2;
+  let currentY = s(40); // Top padding
 
-  /* ── Detail rows ─────────────────────────────────────────── */
-  const details = [
-    { lbl: 'Date',       val: esc(timestamp) },
-    { lbl: 'Remarks',    val: esc(refNo)     },
-    { lbl: 'Mode',       val: esc(txnMode)   },
-    { lbl: 'Account No', val: esc(account)   },
-    { lbl: 'Name',       val: esc(name)      },
-    { lbl: 'Status',     val: isSuccess ? 'Success' : 'Failed', status: true },
+  // 1. Top Icon (Tick or Cross inside circle)
+  const ICON_R  = s(26);
+  const ICON_CY = currentY + ICON_R;
+  const iconMark = isSuccess
+    ? `<circle cx="${centerX}" cy="${ICON_CY}" r="${ICON_R}" fill="${PRIMARY}" />
+       <path d="M ${centerX - s(9)} ${ICON_CY + s(2)} L ${centerX - s(3)} ${ICON_CY + s(8)} L ${centerX + s(11)} ${ICON_CY - s(6)}"
+             fill="none" stroke="#ffffff" stroke-width="${s(4.5)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<circle cx="${centerX}" cy="${ICON_CY}" r="${ICON_R}" fill="${PRIMARY}" />
+       <path d="M ${centerX - s(8)} ${ICON_CY - s(8)} L ${centerX + s(8)} ${ICON_CY + s(8)}
+                M ${centerX + s(8)} ${ICON_CY - s(8)} L ${centerX - s(8)} ${ICON_CY + s(8)}"
+             fill="none" stroke="#ffffff" stroke-width="${s(4.5)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  
+  currentY = ICON_CY + ICON_R; // Bottom edge of the circle
+
+  // 2. Name & Account
+  currentY += s(34); // Gap to Name baseline
+  const nameSvg = `<text x="${centerX}" y="${currentY}" font-family="${FF}" font-size="${sf(18)}" font-weight="500" fill="${BOLD_TEXT}" text-anchor="middle">${esc(name)}</text>`;
+  
+  currentY += s(24); // Gap to Account baseline
+  const accSvg  = `<text x="${centerX}" y="${currentY}" font-family="${FF}" font-size="${sf(14)}" font-weight="400" fill="${NORMAL_TEXT}" text-anchor="middle">${esc(account) ? esc(account) : 'Bank Transfer'}</text>`;
+  
+  // 3. Amount
+  currentY += s(68); // Large gap for huge text ascenders
+  const amountSvg = `<text x="${centerX}" y="${currentY}" font-family="${FF}" font-size="${sf(56)}" font-weight="300" fill="${BOLD_TEXT}" text-anchor="middle">&#8377;${esc(amount)}</text>`;
+  
+  // 4. Status Indicator (small icon + "Success" text)
+  currentY += s(38); // Gap to Status baseline
+  const STATUS_TEXT = isSuccess ? 'Success' : 'Failed';
+  const smallIconR = s(9);
+  
+  // Center alignment for status group
+  const textWidthEst = STATUS_TEXT.length * sf(8); 
+  const groupWidth = (smallIconR * 2) + s(8) + textWidthEst;
+  const startX = centerX - (groupWidth / 2);
+  const SM_ICON_CX = startX + smallIconR;
+  const SM_ICON_CY = currentY - s(5); // Center icon relative to text baseline
+  
+  const smallIconSVG = isSuccess 
+    ? `<circle cx="${SM_ICON_CX}" cy="${SM_ICON_CY}" r="${smallIconR}" fill="${PRIMARY}" />
+       <path d="M ${SM_ICON_CX - s(3)} ${SM_ICON_CY} L ${SM_ICON_CX - s(1)} ${SM_ICON_CY + s(3)} L ${SM_ICON_CX + s(4)} ${SM_ICON_CY - s(2)}" fill="none" stroke="#ffffff" stroke-width="${s(2)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<circle cx="${SM_ICON_CX}" cy="${SM_ICON_CY}" r="${smallIconR}" fill="${PRIMARY}" />
+       <path d="M ${SM_ICON_CX - s(3)} ${SM_ICON_CY - s(3)} L ${SM_ICON_CX + s(3)} ${SM_ICON_CY + s(3)} M ${SM_ICON_CX + s(3)} ${SM_ICON_CY - s(3)} L ${SM_ICON_CX - s(3)} ${SM_ICON_CY + s(3)}" fill="none" stroke="#ffffff" stroke-width="${s(2)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  const statusSvg = `
+    ${smallIconSVG}
+    <text x="${SM_ICON_CX + s(16)}" y="${currentY}" font-family="${FF}" font-size="${sf(15)}" font-weight="500" fill="${PRIMARY}" text-anchor="start">${STATUS_TEXT}</text>
+  `;
+
+  // 5. Date & Time
+  currentY += s(28); 
+  const timeSvg = `<text x="${centerX}" y="${currentY}" font-family="${FF}" font-size="${sf(13)}" font-weight="400" fill="${LIGHT_TEXT}" text-anchor="middle">${esc(timestamp)}</text>`;
+  
+  // 6. Detailed Card
+  currentY += s(26); // Gap before card Top Edge
+  const startCardY = currentY; 
+  
+  const CARD_M = s(16);
+  const CARD_W = width - (CARD_M * 2);
+  const CARD_R = s(16);
+  
+  let cardInnerY = startCardY + s(30); // Top padding inside card
+
+  const accountInfo = [];
+  if (account) accountInfo.push(`A/C: ${esc(account)}`);
+  if (ifsc) accountInfo.push(`IFSC: ${esc(ifsc)}`);
+
+  const cardDetails = [
+    { label: 'Transaction ID', value: esc(refNo) },
+    { label: `To: ${esc(name)}`, value: accountInfo.length > 0 ? accountInfo.join(' • ') : 'Bank Transfer' },
+    { label: 'Payment Mode', value: esc(txnMode) },
+    { label: 'Amount in Words', value: convertToIndianWords(amount) },
   ];
 
-  // Fixed smaller row heights for a tighter table layout, leaving padding at the bottom
-  const ROW_H      = s(34);
-  const TABLE_MARGIN = s(8); // Gap below the blue header
-  const ROWS_START = HDR_H + TABLE_MARGIN;
-  const FOOTER_SEP_Y = ROWS_START + details.length * ROW_H;
+  let cardContentSvg = '';
+  for (let i = 0; i < cardDetails.length; i++) {
+    const d = cardDetails[i];
+    cardContentSvg += `<text x="${CARD_M + s(24)}" y="${cardInnerY}" font-family="${FF}" font-size="${sf(14)}" font-weight="600" fill="${BOLD_TEXT}">${d.label}</text>\n`;
+    cardInnerY += s(22);
+    
+    const lines = wrapText(d.value, 46);
+    for (const line of lines) {
+      cardContentSvg += `<text x="${CARD_M + s(24)}" y="${cardInnerY}" font-family="${FF}" font-size="${sf(14)}" font-weight="400" fill="${NORMAL_TEXT}">${line}</text>\n`;
+      cardInnerY += s(20);
+    }
+    cardInnerY += s(10); // block spacing
+  }
 
-  const gridSVG = details.map((d, i) => {
-    const rowY     = ROWS_START + i * ROW_H;
-    const midY     = rowY + ROW_H / 2;
-    const lblY     = Math.round(midY + sf(4.5)); // optically vertical center
-    const valColor = d.status ? PRIMARY_TEXT : BOLD_TEXT;
-    const valWgt   = d.status ? '700' : '500';
-    const sep = i > 0
-      ? `<line x1="${PAD_X}" y1="${rowY}" x2="${width - PAD_X}" y2="${rowY}" stroke="${DIVIDER}" stroke-width="1"/>`
-      : '';
-    return `
-    ${sep}
-    <text x="${PAD_X}" y="${lblY}"
-          font-family="${FF}" font-size="${sf(13)}"
-          font-weight="400" fill="${LIGHT_TEXT}">${d.lbl}</text>
-    <text x="${width - PAD_X}" y="${lblY}"
-          font-family="${FF}" font-size="${sf(13)}"
-          font-weight="${valWgt}" fill="${valColor}" text-anchor="end">${d.val}</text>
-    `;
-  }).join('\n');
-
-  /* ── Status icon mark ────────────────────────────────────── */
-  const iconMark = isSuccess
-    ? `<path d="M ${width / 2 - s(8)} ${ICON_CY} L ${width / 2 - s(2)} ${ICON_CY + s(7)} L ${width / 2 + s(10)} ${ICON_CY - s(8)}"
-             fill="none" stroke="#fff" stroke-width="${s(4)}" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<path d="M ${width / 2 - s(7)} ${ICON_CY - s(7)} L ${width / 2 + s(7)} ${ICON_CY + s(7)}
-              M ${width / 2 + s(7)} ${ICON_CY - s(7)} L ${width / 2 - s(7)} ${ICON_CY + s(7)}"
-             fill="none" stroke="#fff" stroke-width="${s(4)}" stroke-linecap="round" stroke-linejoin="round"/>`;
-
-  /* ── Amount words tspans ─────────────────────────────────── */
-  const wordTspans = wordLines.map((line, i) =>
-    `<tspan x="${width / 2}" dy="${i === 0 ? '0' : sf(18)}">${line}</tspan>`
-  ).join('');
-
-  /* ── Footer layout ───────────────────────────────────────── */
-  const FOOTER_LBL_Y = height - s(40);
-
-  // Compact RSD logo — use sf() so sizing is relative to the shorter axis (width)
-  const LOGO_FS     = sf(16);           // font-size for R, S, D
-  const LOGO_W      = sf(34);           // approximate rendered width of "RSD"
-  const PS_FS       = sf(13);           // "PAYMENT SOLUTION" font-size
-  const GAP         = sf(6);            // gap between logo and text
+  cardInnerY += s(10); // Bottom padding inside card
+  const CARD_H = cardInnerY - startCardY;
   
-  // "PAYMENT SOLUTION" is 16 uppercase bold chars (approx 0.75em width each) + 0.6px letter spacing
-  const PS_W        = sf(165);          // approx width of "PAYMENT SOLUTION"
-  const BLOCK_W     = LOGO_W + GAP + PS_W;
+  const cardBoxSvg = `<rect x="${CARD_M}" y="${startCardY}" width="${CARD_W}" height="${CARD_H}" rx="${CARD_R}" ry="${CARD_R}" fill="${CARD_BG}" stroke="${CARD_BORDER}" stroke-width="${s(1.2)}"/>`;
+  
+  currentY = startCardY + CARD_H; // Set currentY to bottom edge of card
+  
+  // 7. Disclaimer
+  currentY += s(36); // Gap below card for disclaimer
+  const disclaimerSvg = `<text x="${centerX}" y="${currentY}" font-family="${FF}" font-size="${sf(10)}" font-weight="600" fill="${LIGHT_TEXT}" text-anchor="middle" letter-spacing="0.8">CONNECTED BANKING - POWERED BY</text>`;
 
-  // Nudge the logo block slightly to the right as requested
-  const RIGHT_NUDGE = sf(14);
-  const BLOCK_X     = Math.round((width - BLOCK_W) / 2) + RIGHT_NUDGE;  // left edge of the whole group
-  const BASELINE_Y  = height - s(14);  // shared text baseline for logo & text
+  // 8. Footer (RSD Logo at bottom)
+  currentY += s(36); // Gap before footer
+  const LOGO_FS = sf(24);
+  const PS_FS = sf(18);
+  const GAP = sf(8);
+  const LOGO_W = sf(48);
+  const PS_W = sf(160);
+  const BLOCK_W = LOGO_W + GAP + PS_W;
+  const BLOCK_X = Math.round((width - BLOCK_W) / 2) + s(4); 
 
-  const PS_X = BLOCK_X + LOGO_W + GAP;
-
-  // Swoosh coordinates (relative to BLOCK_X, BASELINE_Y origin → use sf)
-  const SW_X1 = sf(8),  SW_Y1 = sf(-2);
-  const SW_CX = sf(16), SW_CY = sf(4);
-  const SW_X2 = sf(32), SW_Y2 = sf(-14);
-  const ARR_X = sf(36), ARR_Y = sf(-16);
-  const ARR_L = sf(30), ARR_LY = sf(-16);
-
-  const logoSVG = `
-  <g transform="translate(${BLOCK_X}, ${BASELINE_Y})">
-    <!-- R -->
-    <text x="0" y="0"
-          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
-          fill="#1a3a6b">R</text>
-    <!-- S (accent blue) -->
-    <text x="${sf(12)}" y="0"
-          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
-          fill="#4a7fb5">S</text>
-    <!-- D -->
-    <text x="${sf(23)}" y="0"
-          font-family="${FF}" font-size="${LOGO_FS}" font-weight="900"
-          fill="#1a3a6b">D</text>
-    <!-- Clean diagonal swoosh arrow (thin line + arrowhead) -->
-    <line x1="${sf(9)}" y1="${sf(-1)}" x2="${sf(30)}" y2="${sf(-14)}"
-          stroke="#4a7fb5" stroke-width="${sf(2)}" stroke-linecap="round"/>
-    <polygon points="${sf(30)},${sf(-17)} ${sf(34)},${sf(-12)} ${sf(28)},${sf(-11)}"
-             fill="#4a7fb5"/>
+  const footerSvg = `
+  <g transform="translate(${BLOCK_X}, ${currentY})">
+    <text x="0" y="0" font-family="${FF}" font-size="${LOGO_FS}" font-weight="900" fill="#1f2937">R</text>
+    <text x="${sf(16)}" y="0" font-family="${FF}" font-size="${LOGO_FS}" font-weight="900" fill="${PRIMARY}">S</text>
+    <text x="${sf(32)}" y="0" font-family="${FF}" font-size="${LOGO_FS}" font-weight="900" fill="#1f2937">D</text>
+    <path d="M ${sf(12)} ${sf(-4)} Q ${sf(24)} ${sf(-16)} ${sf(38)} ${sf(-18)}" fill="none" stroke="${PRIMARY}" stroke-width="${sf(2.5)}" stroke-linecap="round"/>
+    <polygon points="${sf(38)},${sf(-23)} ${sf(44)},${sf(-16)} ${sf(36)},${sf(-13)}" fill="${PRIMARY}"/>
+    <text x="${LOGO_W + GAP}" y="${sf(-1)}" font-family="${FF}" font-size="${PS_FS}" font-weight="600" fill="#1f2937" text-anchor="start" letter-spacing="0.5">Payment Solution</text>
   </g>`;
 
+  // Final padding at the bottom of the image
+  currentY += s(36);
+  
+  // Set final height to dynamically wrap content if it overflows bounds
+  const finalSvgHeight = Math.max(height, currentY);
+
   const svg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
-     xmlns="http://www.w3.org/2000/svg">
-
-  <!-- White card background -->
-  <rect width="${width}" height="${height}" rx="${CARD_R}" ry="${CARD_R}" fill="#ffffff"/>
-
-  <!-- Pale header with white border gap -->
-  <rect x="${s(12)}" y="${s(12)}" width="${width - s(24)}" height="${HDR_H - s(12)}"
-        rx="${CARD_R}" ry="${CARD_R}" fill="${PALE_BG}"/>
-  <rect x="${s(12)}" y="${HDR_H - CARD_R}" width="${width - s(24)}" height="${CARD_R}" fill="${PALE_BG}"/>
-
-  <!-- Status icon outer circle -->
-  <circle cx="${width / 2}" cy="${ICON_CY}" r="${ICON_R}"
-          fill="#ffffff" filter="drop-shadow(0 3px 6px rgba(0,0,0,0.08))"/>
-  <!-- Coloured inner circle -->
-  <circle cx="${width / 2}" cy="${ICON_CY}" r="${ICON_IR}" fill="${ICON_COLOR}"/>
+<svg width="${width}" height="${finalSvgHeight}" viewBox="0 0 ${width} ${finalSvgHeight}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${width}" height="${finalSvgHeight}" fill="${BG_COLOR}"/>
   ${iconMark}
-
-  <!-- Payment Successful / Failed -->
-  <text x="${width / 2}" y="${s(95)}"
-        font-family="${FF}" font-size="${sf(18)}" font-weight="700"
-        fill="${PRIMARY_TEXT}" text-anchor="middle">Payment ${isSuccess ? 'Successful' : 'Failed'}</text>
-
-  <!-- Large rupee amount -->
-  <text x="${width / 2}" y="${s(138)}"
-        font-family="${FF}" font-size="${sf(32)}" font-weight="800"
-        fill="${BOLD_TEXT}" text-anchor="middle">&#8377; ${esc(amount)}</text>
-
-  <!-- Amount in words -->
-  <text font-family="${FF}" font-size="${sf(12)}" font-weight="500"
-        fill="${BOLD_TEXT}" text-anchor="middle">
-    <tspan x="${width / 2}" y="${s(165)}">${wordTspans}</tspan>
-  </text>
-
-  <!-- Separator: header → body (aligned with table) -->
-  <line x1="${PAD_X}" y1="${ROWS_START}" x2="${width - PAD_X}" y2="${ROWS_START}" stroke="${DIVIDER}" stroke-width="1"/>
-
-  <!-- Detail rows -->
-  ${gridSVG}
-
-  <!-- Footer separator (aligned with table) -->
-  <line x1="${PAD_X}" y1="${FOOTER_SEP_Y}" x2="${width - PAD_X}" y2="${FOOTER_SEP_Y}" stroke="${DIVIDER}" stroke-width="1"/>
-
-  <!-- "CONNECTED BANKING – POWERED BY" label -->
-  <text x="${width / 2}" y="${FOOTER_LBL_Y}"
-        font-family="${FF}" font-size="${sf(9)}" font-weight="500"
-        fill="${LIGHT_TEXT}" text-anchor="middle" letter-spacing="0.8">CONNECTED BANKING - POWERED BY</text>
-
-  <!-- Inline compact RSD logo -->
-  ${logoSVG}
-
-  <!-- PAYMENT SOLUTION text aligned to logo baseline -->
-  <text x="${PS_X}" y="${BASELINE_Y}"
-        font-family="${FF}" font-size="${PS_FS}" font-weight="700"
-        fill="#1a3a6b" text-anchor="start" letter-spacing="0.6">PAYMENT SOLUTION</text>
-
+  ${nameSvg}
+  ${accSvg}
+  ${amountSvg}
+  ${statusSvg}
+  ${timeSvg}
+  ${cardBoxSvg}
+  ${cardContentSvg}
+  ${disclaimerSvg}
+  ${footerSvg}
 </svg>`);
 
   return { svg };
