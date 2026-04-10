@@ -21,9 +21,8 @@ if (isNaN(rawWidth) || isNaN(rawHeight) || rawWidth <= 0 || rawHeight <= 0) {
   throw new Error('SLIP_WIDTH and SLIP_HEIGHT must be valid positive numbers in the environment variables.');
 }
 
-// Enforce a minimum height ratio (approx 1.17x width) so that the footer doesn't overlap the table
-const minHeight = Math.ceil(rawWidth * 1.17);
-const finalHeight = Math.max(rawHeight, minHeight);
+// The height will be exactly what's requested, but the SVG will dynamically expand if its contents overflow
+const finalHeight = Math.max(rawHeight, 100); // just generic minimum of 100 to avoid crash
 
 // Multiplying by 2 for "High DPI" clarity
 const WIDTH = rawWidth * 2;
