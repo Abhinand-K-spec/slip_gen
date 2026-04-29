@@ -8,26 +8,18 @@ const XLSX = require('xlsx');
 
 function getRandomTimeRange(count) {
   const now = new Date();
-  
-  // Start time: 9:00 AM Today
-  const startTime = new Date(now.getTime());
-  startTime.setHours(9, 0, 0, 0);
+  const TEN_MINUTES_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-  // End time: Right now
-  const endTime = now.getTime();
-  const startMs = startTime.getTime();
-  const rangeMs = endTime - startMs;
+  // Window: current time ± 10 minutes
+  const startMs = now.getTime() - TEN_MINUTES_MS;
+  const rangeMs = TEN_MINUTES_MS * 2; // total 20-minute window
 
-  // If the upload happens before 9 AM (unlikely but possible), 
-  // allow a small fallback window from 9 AM to 9:05 AM.
-  const activeRange = rangeMs > 0 ? rangeMs : 300000; 
-
-  // Generate unique randomized timestamps within the range
+  // Generate random offsets within the ±10 min window
   const offsets = [];
   for (let i = 0; i < count; i++) {
-    offsets.push(Math.floor(Math.random() * activeRange));
+    offsets.push(Math.floor(Math.random() * rangeMs));
   }
-  // Sort them to keep a somewhat chronological but random order
+  // Sort to keep a somewhat chronological but random order
   offsets.sort((a, b) => a - b);
 
   return offsets.map(offset => {
